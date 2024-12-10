@@ -9,13 +9,14 @@ mod mutation {
 
     enum MutationError {
         UnmatchedTypeAndSequenceLength,
+        NumMutationMoreThanSequenceLength,
         MutationFailure,
     }
     type MutationResult<T> = Result<T, MutationError>;
+
     trait Mutator<Output>{
         fn mutate(&self, sequence: &mut Output) -> MutationResult<()>;
     }
-
 
     struct BitFlipMutator {
         probability: u8,
@@ -67,11 +68,55 @@ mod mutation {
 
     struct MultiPointMutator {
         probability: u8,
-        sequence_length: u8
+        sequence_length: usize,
+        num_mutations: usize
     }
+
+    impl Mutator<u16> for MultiPointMutator {
+        fn mutate(&self, sequence: &mut u16) -> MutationResult<()> {
+            let sequence_size = std::mem::size_of::<u16>();
+            if self.num_mutations > self.sequence_length {
+                return Err(MutationError::NumMutationMoreThanSequenceLength);
+            }
+            if self.sequence_length as usize > sequence_size*8 {
+                return Err(MutationError::UnmatchedTypeAndSequenceLength)
+            }
+            let mut mutator: u16 = 0;
+            let mut range: Vec<usize> = (0..self.sequence_length-1).collect();
+            for _ in 0..self.num_mutations{
+                let mut rng = rand::thread_rng();
+                let idx = rng.gen_range(0..range.len());
+                mutator += 1 << range[idx];
+                range.remove(idx);
+            }
+            *sequence ^= mutator;
+            Ok(())
+        }
+    }
+
     macro_rules! impl_mut_for_multipoint_mutator {
-        ($($t:ty), +) => {
-            todo!()
+        ($($t:ty),*) => {
+            $(impl Mutator<$t> for MultiPointMutator {
+                fn mutate(&self, sequence: &mut $t) -> MutationResult<()> {
+                    let sequence_size = std::mem::size_of::<$t>();
+                    if self.num_mutations > self.sequence_length {
+                        return Err(MutationError::NumMutationMoreThanSequenceLength);
+                    }
+                    if self.sequence_length as usize > sequence_size*8 {
+                        return Err(MutationError::UnmatchedTypeAndSequenceLength)
+                    }
+                    let mut mutator: $t = 0;
+                    let mut range: Vec<usize> = (0..self.sequence_length-1).collect();
+                    for _ in 0..self.num_mutations{
+                        let mut rng = rand::thread_rng();
+                        let idx = rng.gen_range(0..range.len());
+                        mutator += 1 << range[idx];
+                        range.remove(idx);
+                    }
+                    *sequence ^= mutator;
+                    Ok(())
+                }
+            })*
         };
     }
 }
