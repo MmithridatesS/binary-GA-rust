@@ -1,5 +1,5 @@
 
-use crate::genome::sequence;
+use crate::genome::sequence::BinarySequence;
 
 #[derive(PartialEq)]
 enum CrossoverError {
@@ -7,15 +7,15 @@ enum CrossoverError {
 }
 
 trait Crossover<T> {
-    fn crossover(first: &mut sequence, second: &mut sequence) -> Result<(), CrossoverError>;
+    fn crossover(&self, first: &mut BinarySequence<T>, second: &mut BinarySequence<T>) -> Result<(), CrossoverError>;
 }
 
 struct SinglePointCrossover {
     sequence_length: usize
-};
+}
 
 impl Crossover<u16> for SinglePointCrossover {
-    fn crossover(&self, first: &mut u16, second: &mut u16) -> Result<(), CrossoverError> {
+    fn crossover(&self, first: &mut BinarySequence<u16>, second: &mut BinarySequence<u16>) -> Result<(), CrossoverError> {
         if self.sequence_length < 2 {
             return Err(CrossoverError::InvalidSequenceLength);
         }
